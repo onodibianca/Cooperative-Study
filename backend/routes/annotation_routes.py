@@ -112,3 +112,28 @@ def delete_annotation(annotation_id):
     db.session.commit()
 
     return jsonify({"msg": "Annotation deleted"}), 200
+
+
+@annotations_bp.route('/file/<int:file_id>/user/<string:username>', methods=['GET'])
+@jwt_required()
+def get_annotations_for_file_by_user(file_id, username):
+    # Optional: validate username exists in your User table if needed
+
+    # Get annotations for file and user
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    annotations = Annotation.query.filter_by(file_id=file_id, user_id=user.id).all()
+
+    result = [{
+        "id": a.id,
+        "file_id": a.file_id,
+        "user_id": a.user_id,
+        "username": username,
+        "selected_text": a.selected_text,
+        "note": a.note,
+        "created_at": a.created_at.isoformat()
+    } for a in annotations]
+
+    return jsonify(result), 200

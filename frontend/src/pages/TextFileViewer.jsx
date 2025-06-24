@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ConfirmationModal from "../components/ConfirmModal";
 import {
@@ -6,7 +6,8 @@ import {
   fetchAnnotationsByFile,
   createAnnotation,
   deleteAnnotation,
-  updateAnnotation, // ← imported from api.js
+  updateAnnotation,
+  fetchAnnotationsByFileAndUser, // ← imported from api.js
 } from "../api/api";
 
 function TextFileViewer() {
@@ -21,8 +22,12 @@ function TextFileViewer() {
   const [loading, setLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [filterUser, setFilterUser] = useState("");
+
+  const debounceTimeout = useRef(null);
 
   useEffect(() => {
+    // load file content and all annotations initially
     const loadFile = async () => {
       setLoading(true);
       try {
@@ -47,6 +52,38 @@ function TextFileViewer() {
     loadFile();
     loadAnnotations();
   }, [fileId]);
+
+  useEffect(() => {
+    // debounce filtering to avoid too many API calls while typing
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+
+    debounceTimeout.current = setTimeout(async () => {
+      if (!filterUser.trim()) {
+        // If empty input, fetch all annotations
+        try {
+          const allAnnotations = await fetchAnnotationsByFile(fileId);
+          setAnnotations(allAnnotations);
+        } catch (error) {
+          console.error(error);
+        }
+      } else {
+        // fetch filtered annotations for username
+        try {
+          const filteredAnnotations = await fetchAnnotationsByFileAndUser(
+            fileId,
+            filterUser.trim()
+          );
+          setAnnotations(filteredAnnotations);
+        } catch (error) {
+          // User not found or other error, clear annotations or show message
+          setAnnotations([]);
+        }
+      }
+    }, 500); // 500ms debounce
+
+    // Cleanup on unmount or filterUser change
+    return () => clearTimeout(debounceTimeout.current);
+  }, [filterUser, fileId]);
 
   const handleMouseUp = () => {
     const text = window.getSelection().toString();
@@ -114,6 +151,15 @@ function TextFileViewer() {
         <h2 className="font-bold mb-4 text-green-700 text-xl">
           📌 Annotations
         </h2>
+
+        <input
+          type="text"
+          placeholder="Filter by username..."
+          value={filterUser}
+          onChange={(e) => setFilterUser(e.target.value)}
+          className="w-full mb-4 p-2 border rounded"
+        />
+
         {annotations.length === 0 ? (
           <p className="italic text-gray-500">No annotations yet.</p>
         ) : (

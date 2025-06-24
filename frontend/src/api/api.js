@@ -134,3 +134,24 @@ export async function updateAnnotation(id, note) {
 
   return res.json();
 }
+
+export async function fetchAnnotationsByFileAndUser(fileId, username) {
+  const token = getToken();
+  if (!token) throw new Error("No token found. Please log in.");
+
+  const res = await fetch(
+    `${ANNOTATION_API_URL}/file/${fileId}/user/${encodeURIComponent(username)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.msg || "Failed to fetch filtered annotations");
+  }
+
+  return res.json();
+}
