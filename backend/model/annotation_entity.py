@@ -1,5 +1,5 @@
 from configure_db import db
-from datetime import datetime
+from datetime import date
 
 class Annotation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -9,9 +9,12 @@ class Annotation(db.Model):
     
     selected_text = db.Column(db.Text, nullable=False)
     note = db.Column(db.Text, nullable=False)
-    
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    created_at = db.Column(db.DateTime, default=date.today)
 
 
     def __repr__(self):
         return f'<Annotation by User {self.user_id} on File {self.file_id}>'
+
+
+

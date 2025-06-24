@@ -1,4 +1,5 @@
-const API_URL = "http://127.0.0.1:5000/api/files";
+const FILE_API_URL = "http://127.0.0.1:5000/api/files";
+const ANNOTATION_API_URL = "http://127.0.0.1:5000/annotations";
 
 const getToken = () => localStorage.getItem("access_token");
 
@@ -6,7 +7,7 @@ export async function fetchFiles() {
   const token = getToken();
   if (!token) throw new Error("No token found. Please log in.");
 
-  const res = await fetch(API_URL, {
+  const res = await fetch(FILE_API_URL, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -21,7 +22,7 @@ export async function deleteFile(id) {
   const token = getToken();
   if (!token) throw new Error("No token found. Please log in.");
 
-  const res = await fetch(`${API_URL}/${id}`, {
+  const res = await fetch(`${FILE_API_URL}/${id}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -40,7 +41,7 @@ export async function uploadFile(file) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(API_URL, {
+  const res = await fetch(FILE_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -53,4 +54,62 @@ export async function uploadFile(file) {
     throw new Error(errData.msg || "Failed to upload file");
   }
   return res.json();
+}
+
+export async function fetchFileContent(id) {
+  const token = getToken();
+  if (!token) throw new Error("No token found. Please log in.");
+
+  const response = await fetch(`${FILE_API_URL}/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to fetch file content");
+  return response.text();
+}
+
+export async function fetchAnnotationsByFile(fileId) {
+  const token = getToken();
+  if (!token) throw new Error("No token found. Please log in.");
+
+  const res = await fetch(`${ANNOTATION_API_URL}/file/${fileId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error("Failed to fetch annotations");
+  return res.json();
+}
+
+export async function createAnnotation({ file_id, selected_text, note }) {
+  const token = getToken();
+  if (!token) throw new Error("No token found. Please log in.");
+
+  const res = await fetch(`${ANNOTATION_API_URL}/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ file_id, selected_text, note }),
+  });
+
+  if (!res.ok) throw new Error("Failed to create annotation");
+  return res.json();
+}
+
+export async function deleteAnnotation(id) {
+  const token = getToken();
+  if (!token) throw new Error("No token found. Please log in.");
+
+  const res = await fetch(`${ANNOTATION_API_URL}/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) throw new Error("Failed to delete annotation");
+  return true;
 }

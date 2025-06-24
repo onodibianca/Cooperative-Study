@@ -1,36 +1,31 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import ConfirmModal from "../components/ConfirmModal";
+import { useParams, useNavigate } from "react-router-dom";
+import ConfirmationModal from "../components/ConfirmModal";
+import {
+  fetchFileContent,
+  fetchAnnotationsByFile,
+  createAnnotation,
+  deleteAnnotation,
+} from "../api/api";
 
 function TextFileViewer() {
   const { fileId } = useParams();
+  const navigate = useNavigate();
+
   const [content, setContent] = useState("");
   const [annotations, setAnnotations] = useState([]);
   const [selectedText, setSelectedText] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [editingId, setEditingId] = useState(null);
-  const [showConfirmId, setShowConfirmId] = useState(null);
-
-  const token = localStorage.getItem("access_token");
 
   useEffect(() => {
-    const fetchFileContent = async () => {
+    const loadFile = async () => {
       setLoading(true);
-      setError("");
       try {
-        const response = await fetch(
-          `http://127.0.0.1:5000/api/files/${fileId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) throw new Error("Failed to fetch file content");
-        const text = await response.text();
+        const text = await fetchFileContent(fileId);
         setContent(text);
       } catch (err) {
         setError(err.message);
@@ -39,59 +34,41 @@ function TextFileViewer() {
       }
     };
 
-    const fetchAnnotations = async () => {
+    const loadAnnotations = async () => {
       try {
-        const response = await fetch(
-          `http://127.0.0.1:5000/annotations/file/${fileId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) throw new Error("Failed to fetch annotations");
-        const data = await response.json();
+        const data = await fetchAnnotationsByFile(fileId);
         setAnnotations(data);
       } catch (err) {
         console.error(err);
       }
     };
 
-    fetchFileContent();
-    fetchAnnotations();
-  }, [fileId, token]);
+    loadFile();
+    loadAnnotations();
+  }, [fileId]);
 
   const handleMouseUp = () => {
-    const selection = window.getSelection();
-    const text = selection.toString();
-    if (text.trim()) setSelectedText(text);
-    else setSelectedText("");
+    const text = window.getSelection().toString();
+    setSelectedText(text.trim() || "");
   };
 
   const submitAnnotation = async () => {
     if (!selectedText || !note) return;
+
     try {
-      const response = await fetch(`http://127.0.0.1:5000/annotations/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          file_id: fileId,
-          selected_text: selectedText,
-          note,
-        }),
+      await createAnnotation({
+        file_id: fileId,
+        selected_text: selectedText,
+        note: note,
       });
 
-      if (!response.ok) throw new Error("Failed to save annotation");
-      const result = await response.json();
-      setAnnotations((prev) => [...prev, result.annotation]);
+      const updated = await fetchAnnotationsByFile(fileId);
+      setAnnotations(updated);
+
       setSelectedText("");
       setNote("");
     } catch (err) {
-      console.error(err.message);
+      console.error("Failed to save annotation:", err.message);
     }
   };
 
@@ -107,6 +84,9 @@ function TextFileViewer() {
 
   const updateAnnotation = async (id) => {
     try {
+      const token = localStorage.getItem("access_token");
+      if (!token) throw new Error("No token found");
+
       const response = await fetch(`http://127.0.0.1:5000/annotations/${id}`, {
         method: "PUT",
         headers: {
@@ -123,26 +103,16 @@ function TextFileViewer() {
       );
       cancelEdit();
     } catch (err) {
-      console.error(err);
+      console.error("Failed to update annotation:", err.message);
     }
   };
 
-  const deleteAnnotation = async (id) => {
+  const handleDelete = async (id) => {
     try {
-      const response = await fetch(`http://127.0.0.1:5000/annotations/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error("Failed to delete annotation");
-
-      setAnnotations((prev) => prev.filter((a) => a.id !== id));
+      await deleteAnnotation(id);
+      setAnnotations((prev) => prev.filter((ann) => ann.id !== id));
     } catch (err) {
-      console.error(err);
-    } finally {
-      setShowConfirmId(null);
+      console.error(err.message);
     }
   };
 
@@ -150,7 +120,7 @@ function TextFileViewer() {
 
   return (
     <div className="max-w-6xl mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg flex gap-6">
-      {/* Left sidebar for annotations */}
+      {/* Annotations Sidebar */}
       <div className="w-1/3 p-4 border rounded bg-gray-50 h-[80vh] overflow-y-auto sticky top-20">
         <h2 className="font-bold mb-4 text-green-700 text-xl">
           📌 Annotations
@@ -159,7 +129,11 @@ function TextFileViewer() {
           <p className="italic text-gray-500">No annotations yet.</p>
         ) : (
           annotations.map((ann) => (
-            <div key={ann.id} className="mb-4 p-3 border-b border-gray-200">
+            <div
+              key={ann.id}
+              className="mb-4 p-3 border-b border-gray-200"
+              title={`Annotation by ${ann.username || "Unknown"}`}
+            >
               <p>
                 <span className="font-semibold text-gray-600">Text:</span>{" "}
                 <span className="italic text-gray-800">
@@ -199,36 +173,36 @@ function TextFileViewer() {
                     <span className="font-semibold">By:</span>{" "}
                     {ann.username || "Unknown"}
                   </p>
-                  <div className="flex gap-2 mt-2">
+                  <div className="mt-2 flex gap-2">
                     <button
                       onClick={() => startEdit(ann.id, ann.note)}
-                      className="text-blue-600 hover:underline text-sm"
+                      className="text-sm px-3 py-1 bg-blue-200 text-blue-800 rounded hover:bg-blue-300"
                     >
                       Edit
                     </button>
                     <button
-                      onClick={() => setShowConfirmId(ann.id)}
-                      className="text-red-600 hover:underline text-sm"
+                      onClick={() => setConfirmDelete(ann.id)}
+                      className="text-sm px-3 py-1 bg-red-200 text-red-800 rounded hover:bg-red-300"
                     >
                       Delete
                     </button>
                   </div>
                 </>
               )}
-              {showConfirmId === ann.id && (
-                <ConfirmModal
-                  message="Are you sure you want to delete this annotation?"
-                  onConfirm={() => deleteAnnotation(ann.id)}
-                  onCancel={() => setShowConfirmId(null)}
-                />
-              )}
             </div>
           ))
         )}
       </div>
 
-      {/* Main content area */}
+      {/* File Viewer */}
       <div className="w-2/3 flex flex-col">
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="mb-4 self-start px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+        >
+          ← Back to Dashboard
+        </button>
+
         <h1 className="text-3xl font-extrabold mb-6 text-center text-green-700">
           📄 Text File Viewer
         </h1>
@@ -293,6 +267,18 @@ function TextFileViewer() {
           </>
         )}
       </div>
+
+      {/* Delete Confirmation */}
+      {confirmDelete !== null && (
+        <ConfirmationModal
+          message="Are you sure you want to delete this annotation?"
+          onConfirm={() => {
+            handleDelete(confirmDelete);
+            setConfirmDelete(null);
+          }}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </div>
   );
 }
