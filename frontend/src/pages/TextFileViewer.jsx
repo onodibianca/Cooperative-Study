@@ -6,6 +6,7 @@ import {
   fetchAnnotationsByFile,
   createAnnotation,
   deleteAnnotation,
+  updateAnnotation, // ← imported from api.js
 } from "../api/api";
 
 function TextFileViewer() {
@@ -82,21 +83,9 @@ function TextFileViewer() {
     setNote("");
   };
 
-  const updateAnnotation = async (id) => {
+  const handleUpdateAnnotation = async (id) => {
     try {
-      const token = localStorage.getItem("access_token");
-      if (!token) throw new Error("No token found");
-
-      const response = await fetch(`http://127.0.0.1:5000/annotations/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ note }),
-      });
-
-      if (!response.ok) throw new Error("Failed to update annotation");
+      await updateAnnotation(id, note);
 
       setAnnotations((prev) =>
         prev.map((a) => (a.id === id ? { ...a, note } : a))
@@ -151,7 +140,7 @@ function TextFileViewer() {
                   <div className="flex gap-2 mt-2">
                     <button
                       className="bg-blue-500 text-white px-2 py-1 rounded"
-                      onClick={() => updateAnnotation(ann.id)}
+                      onClick={() => handleUpdateAnnotation(ann.id)}
                     >
                       Save
                     </button>

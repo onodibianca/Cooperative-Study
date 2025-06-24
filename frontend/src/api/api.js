@@ -113,3 +113,24 @@ export async function deleteAnnotation(id) {
   if (!res.ok) throw new Error("Failed to delete annotation");
   return true;
 }
+
+export async function updateAnnotation(id, note) {
+  const token = getToken();
+  if (!token) throw new Error("No token found");
+
+  const res = await fetch(`${ANNOTATION_API_URL}/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ note }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.msg || "Failed to update annotation");
+  }
+
+  return res.json();
+}
