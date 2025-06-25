@@ -8,10 +8,19 @@ import UploadFileModal from "../components/UploadFileModal";
 import FriendsModal from "../components/FriendsModal";
 import FriendRequestsModal from "../components/FriendRequestsModal";
 
-import { fetchFiles, deleteFile, uploadFile } from "../api/api";
+import {
+  fetchFiles,
+  deleteFile,
+  uploadFile,
+  fetchFriendRequests, // <-- import this
+} from "../api/api";
 
 function Dashboard() {
   const [files, setFiles] = useState([]);
+  const [friendRequests, setFriendRequests] = useState({
+    received: [],
+    sent: [],
+  });
   const [error, setError] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
@@ -30,9 +39,31 @@ function Dashboard() {
     }
   };
 
+  // New: Load friend requests
+  const loadFriendRequests = async () => {
+    try {
+      const data = await fetchFriendRequests();
+      setFriendRequests(data);
+    } catch (err) {
+      console.error("Failed to load friend requests", err);
+      // optionally setError(err.message);
+    }
+  };
+
   useEffect(() => {
     loadFiles();
+    loadFriendRequests(); // load friend requests on mount
   }, []);
+
+  // If you want to poll friend requests every X seconds, you can add this:
+  /*
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadFriendRequests();
+    }, 30000); // every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+  */
 
   const handleDelete = async () => {
     if (!fileToDelete) return;
@@ -74,7 +105,14 @@ function Dashboard() {
             onClick={() => setShowFriendRequestsModal(true)}
             title="Friend Requests"
           >
-            <FaEnvelope className="text-4xl text-orange-300 hover:text-orange-500" />
+            {/* Change icon color to green if there are any received friend requests */}
+            <FaEnvelope
+              className={`text-4xl ${
+                friendRequests.received.length > 0
+                  ? "text-green-500 hover:text-green-700"
+                  : "text-orange-300 hover:text-orange-500"
+              }`}
+            />
           </button>
         </div>
 
