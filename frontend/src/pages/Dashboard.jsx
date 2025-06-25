@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FaUsers, FaEnvelope } from "react-icons/fa";
+
 import FileItem from "../components/FileItem";
 import ConfirmModal from "../components/ConfirmModal";
 import UploadFileModal from "../components/UploadFileModal";
+import FriendsModal from "../components/FriendsModal";
+import FriendRequestsModal from "../components/FriendRequestsModal";
+
 import { fetchFiles, deleteFile, uploadFile } from "../api/api";
-import { useNavigate } from "react-router-dom";
 
 function Dashboard() {
   const [files, setFiles] = useState([]);
@@ -11,6 +16,8 @@ function Dashboard() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [showFriendRequestsModal, setShowFriendRequestsModal] = useState(false);
 
   const navigate = useNavigate();
 
@@ -54,6 +61,23 @@ function Dashboard() {
   return (
     <div className="bg-green-100 min-h-screen flex justify-center items-start pt-4 relative">
       <div className="bg-white/80 border-4 border-orange-200 rounded-3xl w-[800px] h-[90vh] p-20 shadow-xl relative overflow-y-auto">
+        {/* Top Right User Icon */}
+        <div className="absolute top-6 right-6 flex space-x-4">
+          <button
+            onClick={() => setShowFriendsModal(true)}
+            title="Friends List"
+          >
+            <FaUsers className="text-4xl text-orange-300 hover:text-orange-500" />
+          </button>
+
+          <button
+            onClick={() => setShowFriendRequestsModal(true)}
+            title="Friend Requests"
+          >
+            <FaEnvelope className="text-4xl text-orange-300 hover:text-orange-500" />
+          </button>
+        </div>
+
         <div className="text-[50px] text-orange-200 font-serif mb-16 text-center">
           YOUR FILES
         </div>
@@ -97,6 +121,16 @@ function Dashboard() {
         <UploadFileModal
           onUpload={handleUpload}
           onCancel={() => setShowUpload(false)}
+        />
+      )}
+
+      {showFriendsModal && (
+        <FriendsModal onClose={() => setShowFriendsModal(false)} />
+      )}
+
+      {showFriendRequestsModal && (
+        <FriendRequestsModal
+          onClose={() => setShowFriendRequestsModal(false)}
         />
       )}
     </div>

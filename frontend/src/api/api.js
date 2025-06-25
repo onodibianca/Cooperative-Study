@@ -1,5 +1,6 @@
 const FILE_API_URL = "http://127.0.0.1:5000/api/files";
 const ANNOTATION_API_URL = "http://127.0.0.1:5000/annotations";
+const SOCIAL_API_URL = "http://127.0.0.1:5000/social";
 
 const getToken = () => localStorage.getItem("access_token");
 
@@ -153,5 +154,68 @@ export async function fetchAnnotationsByFileAndUser(fileId, username) {
     throw new Error(errData.msg || "Failed to fetch filtered annotations");
   }
 
+  return res.json();
+}
+
+export async function fetchFriends() {
+  const token = getToken();
+  if (!token) throw new Error("No token found.");
+
+  const res = await fetch(`${SOCIAL_API_URL}/friends`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) throw new Error("Failed to fetch friends.");
+  return res.json();
+}
+
+export async function fetchFriendRequests() {
+  const token = getToken();
+  if (!token) throw new Error("No token found.");
+
+  const res = await fetch(`${SOCIAL_API_URL}/friend-requests`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) throw new Error("Failed to fetch friend requests.");
+  return res.json();
+}
+
+export async function acceptFriendRequest(requestId) {
+  const token = getToken();
+  const res = await fetch(
+    `${SOCIAL_API_URL}/friend-request/accept/${requestId}`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  if (!res.ok) throw new Error("Failed to accept friend request.");
+  return res.json();
+}
+
+export async function deleteFriendRequest(requestId) {
+  const token = getToken();
+  const res = await fetch(
+    `${SOCIAL_API_URL}/friend-request/delete/${requestId}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  if (!res.ok) throw new Error("Failed to delete/reject friend request.");
+  return res.json();
+}
+
+export async function removeFriend(friendId) {
+  const token = getToken();
+  const res = await fetch(`${SOCIAL_API_URL}/friends/remove/${friendId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) throw new Error("Failed to remove friend.");
   return res.json();
 }

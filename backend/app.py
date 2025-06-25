@@ -8,6 +8,7 @@ from model.user_entity import User
 from routes.file_routes import file_bp
 from routes.auth_routes import auth_bp
 from routes.annotation_routes import annotations_bp
+from routes.friend_routes import friend_bp
 
 app = Flask(__name__)
 
@@ -22,6 +23,7 @@ jwt.init_app(app)
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(file_bp, url_prefix="/api")
 app.register_blueprint(annotations_bp, url_prefix='/annotations')
+app.register_blueprint(friend_bp, url_prefix='/social')
 
 CORS(app, resources={r"/*": {"origins": "*"}})
 
