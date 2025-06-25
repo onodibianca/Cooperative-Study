@@ -219,3 +219,23 @@ export async function removeFriend(friendId) {
   if (!res.ok) throw new Error("Failed to remove friend.");
   return res.json();
 }
+
+export async function sendFriendRequest(username) {
+  const token = getToken();
+  if (!token) throw new Error("No token found. Please log in.");
+
+  const res = await fetch(`${SOCIAL_API_URL}/friend-request/send`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ username }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.error || "Failed to send friend request.");
+  }
+  return res.json();
+}

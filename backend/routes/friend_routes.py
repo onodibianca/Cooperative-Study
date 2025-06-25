@@ -8,10 +8,22 @@ from configure_db import db
 friend_bp = Blueprint('friend', __name__)
 
 # Send Friend Request
-@friend_bp.route('/friend-request/send/<int:receiver_id>', methods=['POST'])
+@friend_bp.route('/friend-request/send', methods=['POST'])
 @jwt_required()
-def send_friend_request(receiver_id):
+def send_friend_request_by_username():
     sender_id = int(get_jwt_identity())
+    data = request.get_json()
+    username = data.get("username")
+
+    if not username:
+        return jsonify({'error': 'Username is required.'}), 400
+
+    receiver = User.query.filter_by(username=username).first()
+    if not receiver:
+        return jsonify({'error': 'User not found.'}), 404
+
+    receiver_id = receiver.id
+
     if sender_id == receiver_id:
         return jsonify({'error': "Cannot send a request to yourself."}), 400
 
@@ -25,6 +37,7 @@ def send_friend_request(receiver_id):
     db.session.add(new_request)
     db.session.commit()
     return jsonify({'msg': 'Friend request sent!'}), 200
+
 
 # Accept Friend Request
 @friend_bp.route('/friend-request/accept/<int:request_id>', methods=['POST'])
