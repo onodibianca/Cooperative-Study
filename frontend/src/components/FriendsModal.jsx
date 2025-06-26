@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { fetchFriends, sendFriendRequest } from "../api/api";
+import { fetchFriends, sendFriendRequest, removeFriend } from "../api/api";
+import ConfirmModal from "./ConfirmModal";
+import { FaTrash } from "react-icons/fa";
 
 function FriendsModal({ onClose }) {
   const [friends, setFriends] = useState([]);
@@ -8,19 +10,20 @@ function FriendsModal({ onClose }) {
   const [newFriendUsername, setNewFriendUsername] = useState("");
   const [addFriendError, setAddFriendError] = useState("");
   const [addFriendSuccess, setAddFriendSuccess] = useState("");
+  const [confirmingFriendId, setConfirmingFriendId] = useState(null);
 
   useEffect(() => {
-    const loadFriends = async () => {
-      try {
-        const friends = await fetchFriends();
-        setFriends(friends);
-      } catch (err) {
-        setError(err.message || "Failed to load friends");
-      }
-    };
-
     loadFriends();
   }, []);
+
+  const loadFriends = async () => {
+    try {
+      const data = await fetchFriends();
+      setFriends(data);
+    } catch (err) {
+      setError(err.message || "Failed to load friends");
+    }
+  };
 
   const handleSendFriendRequest = async () => {
     setAddFriendError("");
@@ -36,6 +39,16 @@ function FriendsModal({ onClose }) {
       setNewFriendUsername("");
     } catch (err) {
       setAddFriendError(err.message || "Failed to send friend request.");
+    }
+  };
+
+  const handleRemoveFriend = async (friendId) => {
+    try {
+      await removeFriend(friendId);
+      setFriends((prev) => prev.filter((f) => f.id !== friendId));
+      setConfirmingFriendId(null);
+    } catch (err) {
+      alert(err.message || "Failed to remove friend.");
     }
   };
 
@@ -58,9 +71,21 @@ function FriendsModal({ onClose }) {
           {friends.length === 0 ? (
             <p className="text-gray-500">No friends yet.</p>
           ) : (
-            <ul className="list-disc list-inside space-y-1">
+            <ul className="space-y-2">
               {friends.map((f) => (
-                <li key={f.id}>{f.username}</li>
+                <li
+                  key={f.id}
+                  className="flex justify-between items-center bg-gray-100 p-3 rounded-lg shadow-sm"
+                >
+                  <span className="text-gray-700">{f.username}</span>
+                  <button
+                    onClick={() => setConfirmingFriendId(f.id)}
+                    className="text-red-500 hover:text-red-700"
+                    title="Remove Friend"
+                  >
+                    <FaTrash className="text-4xl text-orange-300 hover:text-orange-500" />
+                  </button>
+                </li>
               ))}
             </ul>
           )}
@@ -111,6 +136,15 @@ function FriendsModal({ onClose }) {
           </button>
         )}
       </div>
+
+      {/* Confirm Remove Friend Modal */}
+      {confirmingFriendId && (
+        <ConfirmModal
+          message="Are you sure you want to remove this friend?"
+          onConfirm={() => handleRemoveFriend(confirmingFriendId)}
+          onCancel={() => setConfirmingFriendId(null)}
+        />
+      )}
     </div>
   );
 }
