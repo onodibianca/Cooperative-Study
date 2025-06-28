@@ -5,7 +5,7 @@ import {
   deleteFriendRequest,
 } from "../api/api";
 
-function FriendRequestsModal({ onClose }) {
+function FriendRequestsModal({ onClose, onRequestsChange }) {
   const [requests, setRequests] = useState({ received: [], sent: [] });
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("received");
@@ -29,6 +29,7 @@ function FriendRequestsModal({ onClose }) {
     try {
       await acceptFriendRequest(id);
       await loadRequests();
+      if (onRequestsChange) onRequestsChange(); // notify Dashboard
     } catch (err) {
       setError(err.message);
     } finally {
@@ -41,6 +42,7 @@ function FriendRequestsModal({ onClose }) {
     try {
       await deleteFriendRequest(id);
       await loadRequests();
+      if (onRequestsChange) onRequestsChange(); // notify Dashboard
     } catch (err) {
       setError(err.message);
     } finally {

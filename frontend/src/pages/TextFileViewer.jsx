@@ -7,7 +7,8 @@ import {
   createAnnotation,
   deleteAnnotation,
   updateAnnotation,
-  fetchAnnotationsByFileAndUser, // ← imported from api.js
+  fetchAnnotationsByFileAndUser,
+  fetchFileContentFriend, // ← imported from api.js
 } from "../api/api";
 
 function TextFileViewer() {
@@ -23,6 +24,7 @@ function TextFileViewer() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [filterUser, setFilterUser] = useState("");
+  const [isFriendFile, setIsFriendFile] = useState(false);
 
   const debounceTimeout = useRef(null);
 
@@ -33,8 +35,20 @@ function TextFileViewer() {
       try {
         const text = await fetchFileContent(fileId);
         setContent(text);
+        setIsFriendFile(false); // it's the user's own file
       } catch (err) {
-        setError(err.message);
+        if (err.message.includes("Failed to fetch file content")) {
+          // Try as friend file
+          try {
+            const friendText = await fetchFileContentFriend(fileId);
+            setContent(friendText);
+            setIsFriendFile(true);
+          } catch (friendErr) {
+            setError("File not found or access denied.");
+          }
+        } else {
+          setError(err.message);
+        }
       } finally {
         setLoading(false);
       }

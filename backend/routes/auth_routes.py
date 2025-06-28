@@ -70,5 +70,5 @@ def delete_account():
     
     except Exception as e:
         db.session.rollback()
-        print("Failed to delete user:{e}")
+        print(f"Failed to delete user: {e}")
         return jsonify({"msg":"faile dto delete user", "error": str(e)}),500

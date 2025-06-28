@@ -239,3 +239,33 @@ export async function sendFriendRequest(username) {
   }
   return res.json();
 }
+
+export async function fetchFriendsFiles() {
+  const token = getToken();
+  if (!token) throw new Error("No token found. Please log in.");
+
+  const res = await fetch(`${FILE_API_URL}/friends`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const errData = await res.json();
+    throw new Error(errData.msg || "Failed to fetch friends' files");
+  }
+  return res.json();
+}
+
+export async function fetchFileContentFriend(id) {
+  const token = getToken();
+  if (!token) throw new Error("No token found. Please log in.");
+
+  const response = await fetch(`${FILE_API_URL}/friends/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) throw new Error("Failed to fetch friend's file content");
+
+  return response.text();
+}

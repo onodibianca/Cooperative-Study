@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from configure_db import db
 from model.file_entity import File 
+from model.friendship_entity import Friendship
 import os
 from werkzeug.utils import secure_filename
 
@@ -113,3 +114,36 @@ def delete_file(file_id):
 
     return jsonify({'msg': 'File deleted successfully'}), 200
 
+#GET FRIENDS FILE
+@file_bp.route("/files/friends", methods=["GET"])
+@jwt_required()
+def get_friends_files():
+    user_id = int(get_jwt_identity())
+    friend_ids = Friendship.get_mutual_friend_ids(user_id)
+
+    # Only files from friends, exclude user's own files here
+    files = File.query.filter(File.user_id.in_(friend_ids)).all()
+
+    result = [{
+        'id': f.id,
+        'filename': f.filename,
+        'stored_path': f.stored_path,
+        'upload_date': f.upload_date.strftime('%Y-%m-%d'),
+        'owner_id': f.user_id,
+        'owner_username': f.user.username
+    } for f in files]
+
+    return jsonify(result), 200
+
+#GET FRIEND S FILE BY ID
+@file_bp.route('/files/friends/<int:file_id>', methods=['GET'])
+@jwt_required()
+def get_friend_file_content(file_id):
+    user_id = int(get_jwt_identity())
+    friend_ids = Friendship.get_mutual_friend_ids(user_id)
+    
+    file_record = File.query.filter(File.id == file_id, File.user_id.in_(friend_ids)).first()
+    if not file_record or not os.path.exists(file_record.stored_path):
+        return jsonify({'msg': 'File not found or access denied'}), 404
+
+    return send_file(file_record.stored_path, as_attachment=False)

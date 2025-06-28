@@ -7,15 +7,18 @@ import ConfirmModal from "../components/ConfirmModal";
 import UploadFileModal from "../components/UploadFileModal";
 import FriendsModal from "../components/FriendsModal";
 import FriendRequestsModal from "../components/FriendRequestsModal";
+import LogoutMenu from "../components/LogoutMenu";
 
 import {
   fetchFiles,
+  fetchFriendsFiles, // <-- new API function to fetch friends' files
   deleteFile,
   uploadFile,
-  fetchFriendRequests, // <-- import this
+  fetchFriendRequests,
 } from "../api/api";
 
 function Dashboard() {
+  const [view, setView] = useState("your"); // "your" or "friends"
   const [files, setFiles] = useState([]);
   const [friendRequests, setFriendRequests] = useState({
     received: [],
@@ -30,40 +33,42 @@ function Dashboard() {
 
   const navigate = useNavigate();
 
+  // Load files depending on the current view
   const loadFiles = async () => {
     try {
-      const data = await fetchFiles();
+      setError("");
+      let data;
+      if (view === "your") {
+        data = await fetchFiles();
+      } else {
+        data = await fetchFriendsFiles();
+      }
       setFiles(data);
     } catch (err) {
       setError(err.message || "Error loading files");
     }
   };
 
-  // New: Load friend requests
+  const handleFriendRequestsChange = async () => {
+    await loadFriendRequests(); // reload friend requests from backend
+  };
+
   const loadFriendRequests = async () => {
     try {
       const data = await fetchFriendRequests();
       setFriendRequests(data);
     } catch (err) {
       console.error("Failed to load friend requests", err);
-      // optionally setError(err.message);
     }
   };
 
   useEffect(() => {
     loadFiles();
-    loadFriendRequests(); // load friend requests on mount
-  }, []);
+  }, [view]); // reload files when view changes
 
-  // If you want to poll friend requests every X seconds, you can add this:
-  /*
   useEffect(() => {
-    const interval = setInterval(() => {
-      loadFriendRequests();
-    }, 30000); // every 30 seconds
-    return () => clearInterval(interval);
+    loadFriendRequests();
   }, []);
-  */
 
   const handleDelete = async () => {
     if (!fileToDelete) return;
@@ -89,8 +94,13 @@ function Dashboard() {
     }
   };
 
+  const toggleView = () => {
+    setView(view === "your" ? "friends" : "your");
+  };
+
   return (
     <div className="bg-green-100 min-h-screen flex justify-center items-start pt-4 relative">
+      <LogoutMenu />
       <div className="bg-white/80 border-4 border-orange-200 rounded-3xl w-[800px] h-[90vh] p-20 shadow-xl relative overflow-y-auto">
         {/* Top Right User Icon */}
         <div className="absolute top-6 right-6 flex space-x-4">
@@ -105,7 +115,6 @@ function Dashboard() {
             onClick={() => setShowFriendRequestsModal(true)}
             title="Friend Requests"
           >
-            {/* Change icon color to green if there are any received friend requests */}
             <FaEnvelope
               className={`text-4xl ${
                 friendRequests.received.length > 0
@@ -116,26 +125,40 @@ function Dashboard() {
           </button>
         </div>
 
-        <div className="text-[50px] text-orange-200 font-serif mb-16 text-center">
-          YOUR FILES
+        {/* Header with toggle arrow */}
+        <div className="flex items-center justify-center space-x-4 mb-16">
+          <button
+            onClick={toggleView}
+            className="text-4xl text-orange-300 hover:text-orange-500"
+            aria-label="Toggle files view"
+          >
+            {view === "your" ? "→" : "←"}
+          </button>
+          <h2 className="text-[50px] text-orange-200 font-serif select-none">
+            {view === "your" ? "YOUR FILES" : "FRIENDS' FILES"}
+          </h2>
+          <div style={{ width: 40 }}></div> {/* spacer to balance the arrow */}
         </div>
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
-        <div className="max-h-[60vh] overflow-y-auto space-y-4">
+        <div className="max-h-[60vh] overflow-y-auto">
           {files.length === 0 ? (
             <p className="text-gray-600">No files found.</p>
           ) : (
-            files.map((file) => (
-              <FileItem
-                key={file.id}
-                file={file}
-                onDelete={() => {
-                  setFileToDelete(file.id);
-                  setShowConfirm(true);
-                }}
-              />
-            ))
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {files.map((file) => (
+                <FileItem
+                  key={file.id}
+                  file={file}
+                  showOwner={view === "friends"} // only show when viewing friends’ files
+                  onDelete={() => {
+                    setFileToDelete(file.id);
+                    setShowConfirm(true);
+                  }}
+                />
+              ))}
+            </div>
           )}
         </div>
 
@@ -169,6 +192,7 @@ function Dashboard() {
       {showFriendRequestsModal && (
         <FriendRequestsModal
           onClose={() => setShowFriendRequestsModal(false)}
+          onRequestsChange={handleFriendRequestsChange} // pass callback here
         />
       )}
     </div>
